@@ -1,0 +1,1 @@
+<session_id>    <sending_client>    <chat_message>

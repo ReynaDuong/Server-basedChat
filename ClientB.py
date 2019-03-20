@@ -4,6 +4,14 @@
 import socket
 
 # define protocol message
+hello = "HELLO (Client-ID-B)"
+response = "RESPONSE ()"
+connect = ""
+chat_request = ""
+chat_started = ""
+end_request = ""
+chat = ""
+history_req = ""
 
 # Define the port on which you want to connect
 # host = socket.gethostbyname('localhost')
