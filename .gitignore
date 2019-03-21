@@ -165,3 +165,8 @@ dmypy.json
 
 backup/
 .idea/workspace.xml
+/.idea/Server-based Chat.iml
+/.idea/encodings.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml
