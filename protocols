@@ -1,0 +1,15 @@
+HELLO (Client-ID-A)
+CHALLENGE (rand)
+RESPONSE (client-ID, Res)
+AUTH_SUCCESS(rand_cookie, port_number)
+AUTH_FAIL
+CONNECT (rand_cookie)
+CONNECTED
+CHAT_REQUEST (Client-ID-B)
+CHAT_STARTED (session-ID, Client-ID-B)
+UNREACHABLE (Client-ID-B)
+END_REQUEST (session-ID)
+END_NOTIF (session-ID)
+CHAT (session-ID, chat message)
+HISTORY_REQ (Client-ID-B)
+HISTORY_RESP (Sending Client-ID, chat message)
