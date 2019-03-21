@@ -1,68 +1,59 @@
-# TODO
-# authentication before accepting messages
-
 import socket
 import sys
 import hashlib
 from random import randint
 import util
+import threading
 
 
-def main():
-    # Define host and port number
-    udp_port = 9999
-    tcp_port = 12345
-    host = "127.0.0.1"
+udp_port = 9999
+tcp_port = 12345
+host = "127.0.0.1"
 
-    subscriber_list = {
-        'Client-ID-A': {
-            'Online': False,
-            'LongTermKey': '123',
-            'SessionKey': '',
-            'SessionID': '',
-            'Cookie': ''
-        },
-        'Client-ID-B': {
-            'Online': False,
-            'LongTermKey': '456',
-            'SessionKey': '',
-            'SessionID': '',
-            'Cookie': ''
-        },
-        'Client-ID-C': {
-            'Online': False,
-            'LongTermKey': '789',
-            'SessionKey': '',
-            'SessionID': '',
-            'Cookie': ''
-        },
-        'Client-ID-D': {
-            'Online': False,
-            'LongTermKey': '000',
-            'SessionKey': '',
-            'SessionID': '',
-            'Cookie': ''
-        },
-        'Client-ID-E': {
-            'Online': False,
-            'LongTermKey': 'abc',
-            'SessionKey': '',
-            'SessionID': '',
-            'Cookie': ''
-        }
+subscriber_list = {
+    'Client-ID-A': {
+        'Online': False,
+        'LongTermKey': '123',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-B': {
+        'Online': False,
+        'LongTermKey': '456',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-C': {
+        'Online': False,
+        'LongTermKey': '789',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-D': {
+        'Online': False,
+        'LongTermKey': '000',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-E': {
+        'Online': False,
+        'LongTermKey': 'abc',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
     }
+}
 
-    udp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    print("UDP Socket successfully created")
 
+def start_tcp_thread():
     tcp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("TCP Socket successfully created")
 
-    # bind the socket with address and port number
     try:
-        udp_server_socket.bind((host, udp_port))
-        print("UDP Socket is bind to %s" % udp_port)
-
         tcp_server_socket.bind((host, tcp_port))
         print("TCP Socket is bind to %s" % tcp_port)
     except socket.error as msg:
@@ -73,9 +64,29 @@ def main():
     tcp_server_socket.listen(5)
     print("Socket is listening")
 
-    # keep server online
-    while True:
+    # Chat session
+    # tcp_client, tcp_addr = tcp_server_socket.accept()
+    #
+    # if tcp_client:
+    #     print('Got TCP connection from', tcp_addr)
+    # Chat session by TCP
+    # Online == True and SessionKey and Cookie is not None
+    # chat session
+    #
 
+
+def start_udp_thread():
+    udp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print("UDP Socket successfully created")
+
+    try:
+        udp_server_socket.bind((host, udp_port))
+        print("UDP Socket is bind to %s" % udp_port)
+    except socket.error as msg:
+        print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+        sys.exit()
+
+    while True:
         # Authenticate
         message, udp_addr = udp_server_socket.recvfrom(4096)
 
@@ -114,13 +125,12 @@ def main():
             print('Sending %s' % message)
 
         udp_server_socket.sendto(message.encode(), udp_addr)
-        # udp_server_socket.close()
+        udp_server_socket.close()
 
-        # Chat session
-        # tcp_client, tcp_addr = tcp_server_socket.accept()
-        #
-        # if tcp_client:
-        #     print('Got TCP connection from', tcp_addr)
+
+def main():
+    print('start udp thread')
+    print('start tcp thread')
 
 
 main()
