@@ -49,57 +49,55 @@ def main():
 
     # Define the port on which you want to connect
     host = "127.0.0.1"
+    udp_port = 7777
     tcp_port = 0
 
     new_connection = True
-    authenticated = False
     connected = False
-    message = ''
 
     while True:
         # Authentication
         if not connected:
             udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            ip, udp_port = udp_socket.getsockname()
+            udp_socket.bind((host, udp_port))
 
             if new_connection:
                 message = 'HELLO(%s)' % client_id
                 udp_socket.sendto(message.encode(), (host, 9999))
                 print('Sending %s' % message)
-                # udp_socket.close()
+                udp_socket.close()
                 new_connection = False
             else:
-                print('line 72')
-                udp_socket.connect((ip, udp_port))
-                print('line 74')
                 message, udp_addr = udp_socket.recvfrom(4096)
-                print('line 76')
                 message = message.decode('utf-8')
 
-                print('Receiving %s' % message)
+                print('Receiving %s from %s' % (message, udp_addr))
 
                 if message.startswith('CHALLENGE'):
                     rand = util.get_substring_between_parentheses(message)
-                    response = hashlib.sha1(client_instances[client_id]['LongTermKey'] + str(rand))
+                    response = hashlib.sha1(client_instances[client_id]['LongTermKey'].encode('utf-8') +
+                                            rand.encode()).hexdigest()
                     message = 'RESPONSE(%s,%s)' % (client_id, response)
+
                 elif message.startswith('AUTH_SUCCESS'):
                     rand_cookie, tcp_port = util.get_substring_between_parentheses(message).split(',')
                     client_instances[client_id]['Cookie'] = rand_cookie
                     message = 'CONNECT(%s)' % rand_cookie
+
                 elif message.startswith('AUTH_FAIL'):
                     print('Server: Fail to authenticate :( meow')
                     udp_socket.close()
                     break
+
                 elif message.startswith('CONNECTED'):
                     print('You are now connected :)')
                     udp_socket.close()
                     connected = True
                     continue
 
-                print('Sending %s' % message)
-                print(new_connection)
-
-                # udp_socket.close()
+                print('Sending %s to %s' % (message, udp_addr))
+                udp_socket.sendto(message.encode(), udp_addr)
+                udp_socket.close()
 
         else:
             print('connected now on chat session')

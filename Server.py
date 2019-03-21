@@ -79,8 +79,6 @@ def main():
         # Authenticate
         message, udp_addr = udp_server_socket.recvfrom(4096)
 
-        print(udp_addr)
-
         if udp_addr:
             print('Got UDP connection from', udp_addr)
             message = message.decode()
@@ -91,12 +89,14 @@ def main():
                 client_id = util.get_substring_between_parentheses(message)
                 subscriber_list[client_id]['Online'] = True
                 challenge = randint(-1 * sys.maxsize - 1, sys.maxsize)
-                xres = hashlib.sha1((subscriber_list[client_id]['LongTermKey'] + str(challenge)).encode())
+                xres = hashlib.sha1((subscriber_list[client_id]['LongTermKey'] +
+                                     str(challenge)).encode()).hexdigest()
                 subscriber_list[client_id]['SessionKey'] = xres
+                print('xres = %s' % xres)
                 message = 'CHALLENGE(%d)' % challenge
 
             elif message.startswith('RESPONSE'):
-                client_id, res = util.get_substring_between_parentheses(message)
+                client_id, res = util.get_substring_between_parentheses(message).split(',')
                 if subscriber_list[client_id]['SessionKey'] == res.strip():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
                     subscriber_list[client_id]['Cookie'] = str(cookie)
@@ -113,15 +113,14 @@ def main():
 
             print('Sending %s' % message)
 
-            udp_server_socket.sendto(message.encode(), udp_addr)
-            udp_server_socket.close()
-            print('line 117')
+        udp_server_socket.sendto(message.encode(), udp_addr)
+        # udp_server_socket.close()
 
         # Chat session
-        tcp_client, tcp_addr = tcp_server_socket.accept()
-
-        if tcp_client:
-            print('Got TCP connection from', tcp_addr)
+        # tcp_client, tcp_addr = tcp_server_socket.accept()
+        #
+        # if tcp_client:
+        #     print('Got TCP connection from', tcp_addr)
 
 
 main()
