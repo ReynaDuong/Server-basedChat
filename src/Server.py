@@ -3,12 +3,13 @@ import sys
 import hashlib
 from random import randint
 import util
-import threading
+from threading import Thread
 
 
 udp_port = 9999
 tcp_port = 12345
 host = "127.0.0.1"
+debug = False
 
 subscriber_list = {
     'Client-ID-A': {
@@ -91,10 +92,12 @@ def start_udp_thread():
         message, udp_addr = udp_server_socket.recvfrom(4096)
 
         if udp_addr:
-            print('Got UDP connection from', udp_addr)
+            if debug:
+                print('Got UDP connection from', udp_addr)
             message = message.decode()
 
-            print('Receiving %s' % message)
+            if debug:
+                print('Receiving %s' % message)
 
             if message.startswith('HELLO'):
                 client_id = util.get_substring_between_parentheses(message)
@@ -103,7 +106,10 @@ def start_udp_thread():
                 xres = hashlib.sha1((subscriber_list[client_id]['LongTermKey'] +
                                      str(challenge)).encode()).hexdigest()
                 subscriber_list[client_id]['SessionKey'] = xres
-                print('xres = %s' % xres)
+
+                if debug:
+                    print('xres = %s' % xres)
+
                 message = 'CHALLENGE(%d)' % challenge
 
             elif message.startswith('RESPONSE'):
@@ -122,15 +128,23 @@ def start_udp_thread():
             elif message.startswith('CONNECT'):
                 message = 'CONNECTED'
 
-            print('Sending %s' % message)
+            if debug:
+                print('Sending %s' % message)
 
         udp_server_socket.sendto(message.encode(), udp_addr)
-        udp_server_socket.close()
+
+        # close here cause next connection not to be accepted?
+        # udp_server_socket.close()
 
 
 def main():
-    print('start udp thread')
-    print('start tcp thread')
+    udp_thread = Thread(target=start_udp_thread(), args=())
+    udp_thread.start()
+    # udp_thread.join()
+
+    tcp_thread = Thread(target=start_tcp_thread(), args=())
+    tcp_thread.start()
+    # tcp_thread.join()
 
 
 main()

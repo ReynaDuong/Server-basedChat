@@ -2,7 +2,9 @@ import socket
 import sys
 import util
 import hashlib
-import threading
+
+
+debug = False
 
 
 def main():
@@ -50,9 +52,6 @@ def main():
     new_connection = True
     connected = False
 
-    udp_thread = 0
-    tcp_thread = 0
-
     if not is_authenticated:
         while True:
             # Authentication
@@ -63,14 +62,19 @@ def main():
                 if new_connection:
                     message = 'HELLO(%s)' % client_id
                     udp_socket.sendto(message.encode(), (host, 9999))
-                    print('Sending %s' % message)
+
+                    if debug:
+                        print('Sending %s' % message)
+
                     udp_socket.close()
                     new_connection = False
+
                 else:
                     message, udp_addr = udp_socket.recvfrom(4096)
                     message = message.decode('utf-8')
 
-                    print('Receiving %s from %s' % (message, udp_addr))
+                    if debug:
+                        print('Receiving %s from %s' % (message, udp_addr))
 
                     if message.startswith('CHALLENGE'):
                         rand = util.get_substring_between_parentheses(message)
@@ -94,18 +98,23 @@ def main():
                         connected = True
                         continue
 
-                    print('Sending %s to %s' % (message, udp_addr))
+                    if debug:
+                        print('Sending %s to %s' % (message, udp_addr))
+
                     udp_socket.sendto(message.encode(), udp_addr)
                     udp_socket.close()
                     is_authenticated = True
 
             else:
-                print('connected now on chat session')
+                if debug:
+                    print('connected now on chat session')
+
                 break
-    else:  # Chat session
+
+    # Chat session
+    else:
         message = ''
         while True:
-
             tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             print("TCP Socket successfully created")
             tcp_client_socket.bind((host, tcp_port))
