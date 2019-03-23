@@ -9,7 +9,7 @@ from threading import Thread
 udp_port = 9999
 tcp_port = 12345
 host = "127.0.0.1"
-debug = False
+debug = True
 
 subscriber_list = {
     'Client-ID-A': {
@@ -50,8 +50,9 @@ subscriber_list = {
 }
 
 
-def start_tcp_thread():
+def handle_tcp_connection():
     tcp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print("TCP Socket successfully created")
 
     try:
@@ -63,20 +64,22 @@ def start_tcp_thread():
 
     # put the socket into listening mode
     tcp_server_socket.listen(5)
-    print("Socket is listening")
+    print("TCP Socket is listening")
 
     # Chat session
-    # tcp_client, tcp_addr = tcp_server_socket.accept()
-    #
-    # if tcp_client:
-    #     print('Got TCP connection from', tcp_addr)
+    tcp_client, tcp_addr = tcp_server_socket.accept()
+
+    if tcp_client:
+        print('Got TCP connection from', tcp_addr)
+        data = tcp_client.recv(4096)
+        print(data.decode())
+
     # Chat session by TCP
     # Online == True and SessionKey and Cookie is not None
     # chat session
-    #
 
 
-def start_udp_thread():
+def handle_udp_connection():
     udp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print("UDP Socket successfully created")
 
@@ -138,13 +141,14 @@ def start_udp_thread():
 
 
 def main():
-    udp_thread = Thread(target=start_udp_thread(), args=())
-    udp_thread.start()
-    # udp_thread.join()
+    # udp_thread = Thread(target=start_udp_thread(), args=())
+    tcp_thread = Thread(target=handle_tcp_connection(), args=())
 
-    tcp_thread = Thread(target=start_tcp_thread(), args=())
+    # udp_thread.start()
     tcp_thread.start()
-    # tcp_thread.join()
+
+    # udp_thread.join()
+    tcp_thread.join()
 
 
 main()
