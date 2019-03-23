@@ -141,14 +141,14 @@ def handle_udp_connection():
 
 
 def main():
-    # udp_thread = Thread(target=start_udp_thread(), args=())
-    tcp_thread = Thread(target=handle_tcp_connection(), args=())
+    udp_thread = Thread(target=handle_udp_connection(), args=())
+    # tcp_thread = Thread(target=handle_tcp_connection(), args=())
 
-    # udp_thread.start()
-    tcp_thread.start()
+    udp_thread.start()
+    # tcp_thread.start()
 
-    # udp_thread.join()
-    tcp_thread.join()
+    udp_thread.join()
+    # tcp_thread.join()
 
 
 main()

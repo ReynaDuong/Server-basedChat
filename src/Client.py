@@ -45,12 +45,16 @@ def main():
     }
 
     # Define the port on which you want to connect
-    host = ''
+    host = "127.0.0.1"
     udp_port = 7777
     tcp_port = 0
-    is_authenticated = True
-    new_connection = False
-    connected = True
+    is_authenticated = False
+    new_connection = True
+    connected = False
+
+    message = input(client_id + ': ')
+    if message != 'Log on':
+        return
 
     while True:
         # Authentication
@@ -103,6 +107,7 @@ def main():
                 udp_socket.sendto(message.encode(), udp_addr)
                 udp_socket.close()
 
+        # Chat phase
         else:
             print('connected now on chat session')
             message = ''
@@ -115,10 +120,10 @@ def main():
 
                 raw_input = input(client_id + ': ')
                 if raw_input.startswith('Chat '):
-                    chat_client = raw_input.split()[1]
-                    message = 'CHAT_REQUEST (%s)' % chat_client
+                    chat_client = raw_input.split(' ')[1]
+                    message = 'CHAT_REQUEST(%s)' % chat_client
                 elif message.startswith('End chat'):
-                    message = 'END_REQUEST (session-ID)'
+                    message = 'END_REQUEST(session-ID)'
                 else:
                     message = raw_input
 
