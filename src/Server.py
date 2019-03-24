@@ -11,7 +11,7 @@ host = "127.0.0.1"
 debug = True
 global_session_count = randint(0, 1000)
 
-subscriber_list = {
+clients = {
     'Client-ID-A': {
         'Online': False,
         'LongTermKey': 'aaa',
@@ -110,18 +110,21 @@ def handle_tcp_connection(tcp_client):
         if message.startswith('CHAT_REQUEST'):
             from_client_id, to_client_id = data.split(',')
 
-            if subscriber_list[to_client_id]['Online']:
+            if clients[to_client_id]['Online']:
                 global global_session_count
                 global_session_count = global_session_count + 1
 
+                clients[from_client_id]['SessionID'] = str(global_session_count)
+                clients[to_client_id]['SessionID'] = str(global_session_count)
+
                 # send to to_client
                 message = 'CHAT_START(%d,%s)' % (global_session_count, from_client_id)
-                subscriber_list[to_client_id]['QueuedMessages'].append(message)
+                clients[to_client_id]['QueuedMessages'].append(message)
 
                 if debug:
                     print('%s queued messages = %s' %
                           (to_client_id,
-                           ''.join(str(e) for e in subscriber_list[to_client_id]['QueuedMessages'])))
+                           ''.join(str(e) for e in clients[to_client_id]['QueuedMessages'])))
 
                 # send to current client (from_client)
                 message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
@@ -129,26 +132,42 @@ def handle_tcp_connection(tcp_client):
                 message = 'UNREACHABLE(%s)' % to_client_id
 
         elif message.startswith('END_REQUEST'):
-            session_id = util.get_substring_between_parentheses(message)
-            for key, value in subscriber_list.items():
+            client_id, session_id = data.split(',')
+
+            for key, value in clients.items():
+
+                if debug:
+                    print(key)
+                    print(value)
+
                 if value['SessionID'] == session_id:
+
+                    if debug:
+                        print('%s to end chat: ' % key)
+
                     value['SessionKey'] = ''
                     value['SessionID'] = ''
                     value['Cookie'] = ''
 
+                    if key != client_id:
+                        value['QueuedMessages'].append('END_NOTIF(%s)' % session_id)
+
+            required_ack = False
+
         elif message.startswith('PING'):
             from_client_id = data
-            message = ''.join(str(e) for e in subscriber_list[from_client_id]['QueuedMessages'])
+            message = ''.join(str(e) for e in clients[from_client_id]['QueuedMessages'])
+            clients[from_client_id]['QueuedMessages'] = []
 
         elif message.startswith('LOG_OFF'):
             client_id, cookie = util.get_substring_between_parentheses(message).split(',')
             required_ack = False
 
-            if subscriber_list[client_id]['Cookie'] == cookie:
-                subscriber_list[client_id]['Online'] = False
-                subscriber_list[client_id]['SessionKey'] = ''
-                subscriber_list[client_id]['SessionID'] = ''
-                subscriber_list[client_id]['Cookie'] = ''
+            if clients[client_id]['Cookie'] == cookie:
+                clients[client_id]['Online'] = False
+                clients[client_id]['SessionKey'] = ''
+                clients[client_id]['SessionID'] = ''
+                clients[client_id]['Cookie'] = ''
 
                 if debug:
                     print('Reset all variables for %s' % client_id)
@@ -236,11 +255,11 @@ def udp_connection():
 
             if message.startswith('HELLO'):
                 client_id = util.get_substring_between_parentheses(message)
-                subscriber_list[client_id]['Online'] = True
+                clients[client_id]['Online'] = True
                 challenge = randint(-1 * sys.maxsize - 1, sys.maxsize)
-                xres = hashlib.sha1((subscriber_list[client_id]['LongTermKey'] +
+                xres = hashlib.sha1((clients[client_id]['LongTermKey'] +
                                      str(challenge)).encode()).hexdigest()
-                subscriber_list[client_id]['SessionKey'] = xres
+                clients[client_id]['SessionKey'] = xres
 
                 if debug:
                     print('xres = %s' % xres)
@@ -249,16 +268,16 @@ def udp_connection():
 
             elif message.startswith('RESPONSE'):
                 client_id, res = util.get_substring_between_parentheses(message).split(',')
-                if subscriber_list[client_id]['SessionKey'] == res.strip():
+                if clients[client_id]['SessionKey'] == res.strip():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
-                    subscriber_list[client_id]['Cookie'] = str(cookie)
+                    clients[client_id]['Cookie'] = str(cookie)
                     message = 'AUTH_SUCCESS(%d,%d)' % (cookie, tcp_port)
                 else:
                     message = 'AUTH_FAIL'
-                    subscriber_list[client_id]['Online'] = False
-                    subscriber_list[client_id]['SessionKey'] = ''
-                    subscriber_list[client_id]['Cookie'] = ''
-                    subscriber_list[client_id]['SessionID'] = ''
+                    clients[client_id]['Online'] = False
+                    clients[client_id]['SessionKey'] = ''
+                    clients[client_id]['Cookie'] = ''
+                    clients[client_id]['SessionID'] = ''
 
             elif message.startswith('CONNECT'):
                 message = 'CONNECTED'

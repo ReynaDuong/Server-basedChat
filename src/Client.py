@@ -141,7 +141,6 @@ def authenticate():
 
 def chat():
     print('connected now on chat session')
-    message = ''
     end_session = False
 
     tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -166,13 +165,21 @@ def chat():
 
             if message.startswith('CHAT_START'):
                 data = util.get_substring_between_parentheses(message)
-                client_instances[client_id]['SessionId'] = data.split(',')[0]
+                client_instances[client_id]['SessionID'] = data.split(',')[0]
 
                 if debug:
-                    print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionId']))
+                    print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionID']))
+
+                print('Chat started')
 
             elif message.startswith('UNREACHABLE'):
                 print('Correspondent is unreachable')
+
+            elif message.startswith('END_NOTIF'):
+                client_instances[client_id]['SessionID'] = ''
+                client_instances[client_id]['SessionKey'] = ''
+                client_instances[client_id]['Cookie'] = ''
+                print('Chat ended')
 
             elif message.startswith('NO_DATA'):
                 print('No message from server')
@@ -184,13 +191,16 @@ def chat():
         # user input to send
         raw_input = input(client_id + ': ')
 
-        if raw_input.startswith('Chat '):
+        if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
             message = 'CHAT_REQUEST(%s,%s)' % (client_id, chat_client)
 
-        elif message.startswith('End chat'):
-            message = 'END_REQUEST(session-ID)'
-            pass
+        elif raw_input == 'End chat':
+            message = 'END_REQUEST(%s,%s)' % (client_id, client_instances[client_id]['SessionID'])
+            client_instances[client_id]['SessionID'] = ''
+            client_instances[client_id]['SessionKey'] = ''
+            client_instances[client_id]['Cookie'] = ''
+            print('Chat ended')
 
         elif raw_input == 'Log off':
             message = 'LOG_OFF(%s,%s)' % (client_id, client_instances[client_id]['Cookie'])
@@ -200,6 +210,8 @@ def chat():
             message = 'PING(%s)' % client_id
 
         else:
+            # chat message
+
             print('Unknown command')
             continue
 
