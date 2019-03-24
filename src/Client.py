@@ -1,11 +1,21 @@
+import time
 import socket
 import sys
+import sys
+import time
+import threading
+import queue
 import util
 import hashlib
-from random import randint
 
+
+# Define the port on which you want to connect
+host = "127.0.0.1"
+udp_port = 7777
+tcp_port = 0
 debug = True
 client_id = 'Client-ID-%s' % sys.argv[1]
+
 client_instances = {
     'Client-ID-A': {
         'LongTermKey': 'aaa',
@@ -69,18 +79,13 @@ client_instances = {
     }
 }
 
-# Define the port on which you want to connect
-host = "127.0.0.1"
-udp_port = 7777
-tcp_port = 0
-
 
 def authenticate():
     new_connection = True
 
     message = input(client_id + ': ')
     if message != 'Log on':
-        return
+        sys.exit(-1)
 
     # Authentication
     while True:
@@ -111,8 +116,9 @@ def authenticate():
                 message = 'RESPONSE(%s,%s)' % (client_id, response)
 
             elif message.startswith('AUTH_SUCCESS'):
+                cookie, port = util.get_substring_between_parentheses(message).split(',')
                 global tcp_port
-                cookie, tcp_port = util.get_substring_between_parentheses(message).split(',')
+                tcp_port = int(port)
                 client_instances[client_id]['Cookie'] = cookie
                 message = 'CONNECT(%s)' % cookie
 
@@ -136,11 +142,12 @@ def authenticate():
 def chat():
     print('connected now on chat session')
     message = ''
+    end_session = False
 
     tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    tcp_client_socket.settimeout(0.5)  # wait for half a second to receive data from server
-    tcp_client_socket.connect((host, 12345))
+    tcp_client_socket.settimeout(2)  # wait to receive data from server
+    tcp_client_socket.connect((host, tcp_port))
 
     print("TCP Socket successfully created")
 
@@ -148,16 +155,31 @@ def chat():
         # messages from server
         try:
             message = tcp_client_socket.recv(4096)
+            tcp_client_socket.close()
+
+            if message is None:
+                continue
+
             message = message.decode()
-            print('Server: %s' % message)
+            if debug:
+                print('Server: %s' % message)
 
             if message.startswith('CHAT_START'):
                 data = util.get_substring_between_parentheses(message)
                 client_instances[client_id]['SessionId'] = data.split(',')[0]
 
+                if debug:
+                    print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionId']))
+
+            elif message.startswith('UNREACHABLE'):
+                print('Correspondent is unreachable')
+
+            elif message.startswith('NO_DATA'):
+                print('No message from server')
+
         except socket.timeout:
             if debug:
-                print('No message from server')
+                print('No message from server. Timeout.')
 
         # user input to send
         raw_input = input(client_id + ': ')
@@ -172,13 +194,7 @@ def chat():
 
         elif raw_input == 'Log off':
             message = 'LOG_OFF(%s,%s)' % (client_id, client_instances[client_id]['Cookie'])
-
-            if debug:
-                print('Sending %s' % message)
-
-            tcp_client_socket.send(message.encode('utf-8'))
-            tcp_client_socket.close()
-            return
+            end_session = True
 
         elif raw_input == 'Ping':
             message = 'PING(%s)' % client_id
@@ -190,7 +206,17 @@ def chat():
         if debug:
             print('Sending %s' % message)
 
-        tcp_client_socket.send(message.encode('utf-8'))
+        try:
+            tcp_client_socket.send(message.encode('utf-8'))
+        except OSError:
+            if debug:
+                print('Catch OSError, try to connect TCP socket again')
+            tcp_client_socket.connect((host, tcp_port))
+            tcp_client_socket.send(message.encode('utf-8'))
+
+        if end_session:
+            # tcp_client_socket.close()
+            return
 
 
 def main():

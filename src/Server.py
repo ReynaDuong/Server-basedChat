@@ -96,6 +96,8 @@ subscriber_list = {
 
 
 def handle_tcp_connection(tcp_client):
+    required_ack = True
+
     try:
         message = tcp_client.recv(4096)
         message = message.decode()
@@ -104,8 +106,6 @@ def handle_tcp_connection(tcp_client):
             print('Receiving %s' % message)
 
         data = util.get_substring_between_parentheses(message)
-        # from_client_id = data[0]
-        # queued_messages = ''.join(str(e) for e in subscriber_list[from_client_id]['QueuedMessages'])
 
         if message.startswith('CHAT_REQUEST'):
             from_client_id, to_client_id = data.split(',')
@@ -125,14 +125,8 @@ def handle_tcp_connection(tcp_client):
 
                 # send to current client (from_client)
                 message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
-
             else:
                 message = 'UNREACHABLE(%s)' % to_client_id
-
-            if debug:
-                print('Sending %s' % message)
-
-            tcp_client.send(message.encode('utf-8'))
 
         elif message.startswith('END_REQUEST'):
             session_id = util.get_substring_between_parentheses(message)
@@ -146,13 +140,10 @@ def handle_tcp_connection(tcp_client):
             from_client_id = data
             message = ''.join(str(e) for e in subscriber_list[from_client_id]['QueuedMessages'])
 
-            if debug:
-                print('Sending %s' % message)
-
-            tcp_client.send(message.encode('utf-8'))
-
         elif message.startswith('LOG_OFF'):
             client_id, cookie = util.get_substring_between_parentheses(message).split(',')
+            required_ack = False
+
             if subscriber_list[client_id]['Cookie'] == cookie:
                 subscriber_list[client_id]['Online'] = False
                 subscriber_list[client_id]['SessionKey'] = ''
@@ -163,15 +154,27 @@ def handle_tcp_connection(tcp_client):
                     print('Reset all variables for %s' % client_id)
             else:
                 if debug:
-                    print('Receive LOG_OFF command for %s but wrong %s for cookie' % (client_id, cookie))
+                    print('Receive LOG_OFF command for %s but wrong %s for cookie' %
+                          (client_id, cookie))
 
         else:
             print('Unknown command')
 
-    except socket.timeout:
-        print('Wait too long')
+        if required_ack:
+            if message is None or len(message) == 0:
+                message = 'NO_DATA'
 
-    tcp_client.close()
+            if debug:
+                print('Sending %s' % message)
+
+            tcp_client.send(message.encode('utf-8'))
+
+    # except socket.timeout:
+    #     print('Wait too long')
+
+    finally:
+        tcp_client.close()
+        pass
 
 
 def tcp_connection():
@@ -201,6 +204,8 @@ def tcp_connection():
             print('Got TCP connection from', tcp_addr)
             thread = Thread(target=handle_tcp_connection, args=(tcp_client,))
             thread.start()
+            # thread.join()
+            # tcp_client.close()
 
 
 def udp_connection():
