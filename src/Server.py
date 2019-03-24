@@ -18,70 +18,80 @@ subscriber_list = {
         'LongTermKey': 'aaa',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-B': {
         'Online': False,
         'LongTermKey': 'bbb',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-C': {
         'Online': False,
         'LongTermKey': 'ccc',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-D': {
         'Online': False,
         'LongTermKey': 'ddd',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-E': {
         'Online': False,
         'LongTermKey': 'eee',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-F': {
         'Online': False,
         'LongTermKey': 'fff',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-G': {
         'Online': False,
         'LongTermKey': 'ggg',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-H': {
         'Online': False,
         'LongTermKey': 'hhh',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-I': {
         'Online': False,
         'LongTermKey': 'iii',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     },
     'Client-ID-J': {
         'Online': False,
         'LongTermKey': 'jjj',
         'SessionKey': '',
         'SessionID': '',
-        'Cookie': ''
+        'Cookie': '',
+        'QueuedMessages:': []
     }
 }
 
@@ -99,7 +109,21 @@ def handle_tcp_connection(tcp_client):
         if subscriber_list[to_client_id]['Online']:
             global global_session_count
             global_session_count = global_session_count + 1
-            message = 'CHAT_START(%d,%d)' % (global_session_count, from_client_id)
+
+            # send to to_client
+            message = 'CHAT_START(%d,%s)' % (global_session_count, from_client_id)
+            subscriber_list[from_client_id]['QueueMessages'].append(message)
+
+            # send to current client (from_client)
+            message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
+
+        else:
+            message = 'UNREACHABLE(%s)' % to_client_id
+
+        if debug:
+            print('Sending %s' % message)
+
+        tcp_client.send(message.encode('utf-8'))
 
     elif message.startswith('END_REQUEST'):
         session_id = util.get_substring_between_parentheses(message)
@@ -228,9 +252,6 @@ def main():
 
     udp_thread.start()
     tcp_thread.start()
-
-    # udp_thread.join()
-    # tcp_thread.join()
 
 
 main()
