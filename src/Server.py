@@ -86,7 +86,50 @@ subscriber_list = {
 }
 
 
-def handle_tcp_connection():
+def handle_tcp_connection(tcp_client):
+    message = tcp_client.recv(4096)
+    message = message.decode()
+
+    if debug:
+        print('Receiving %s' % message)
+
+    if message.startswith('CHAT_REQUEST'):
+        from_client_id, to_client_id = util.get_substring_between_parentheses(message).split(',')
+
+        if subscriber_list[to_client_id]['Online']:
+            global global_session_count
+            global_session_count = global_session_count + 1
+            message = 'CHAT_START(%d,%d)' % (global_session_count, from_client_id)
+
+    elif message.startswith('END_REQUEST'):
+        session_id = util.get_substring_between_parentheses(message)
+        for key, value in subscriber_list.items():
+            if value['SessionID'] == session_id:
+                value['SessionKey'] = ''
+                value['SessionID'] = ''
+                value['Cookie'] = ''
+
+    elif message.startswith('LOG_OFF'):
+        client_id, cookie = util.get_substring_between_parentheses(message).split(',')
+        if subscriber_list[client_id]['Cookie'] == cookie:
+            subscriber_list[client_id]['Online'] = False
+            subscriber_list[client_id]['SessionKey'] = ''
+            subscriber_list[client_id]['SessionID'] = ''
+            subscriber_list[client_id]['Cookie'] = ''
+
+            if debug:
+                print('Reset all variables for %s' % client_id)
+        else:
+            if debug:
+                print('Receive LOG_OFF command for %s but wrong %s for cookie' % (client_id, cookie))
+
+    else:
+        print('Unknown command')
+
+    tcp_client.close()
+
+
+def tcp_connection():
     if debug:
         print('Start handle_tcp_connection()')
 
@@ -105,49 +148,17 @@ def handle_tcp_connection():
     tcp_server_socket.listen(5)
     print("TCP Socket is listening")
 
-    # Chat session
-    tcp_client, tcp_addr = tcp_server_socket.accept()
+    while True:
+        # Chat session
+        tcp_client, tcp_addr = tcp_server_socket.accept()
 
-    if tcp_client:
-        print('Got TCP connection from', tcp_addr)
-        message = tcp_client.recv(4096)
-        message = message.decode()
-
-        if debug:
-            print('Receiving %s' % message)
-
-        if message.startswith('CHAT_REQUEST'):
-            from_client_id, to_client_id = util.get_substring_between_parentheses(message).split(',')
-
-            if subscriber_list[to_client_id]['Online']:
-                global global_session_count
-                global_session_count = global_session_count + 1
-                message = 'CHAT_START(%d,%d)' % (global_session_count, from_client_id)
-
-        elif message.startswith('END_REQUEST'):
-            session_id = util.get_substring_between_parentheses(message)
-            for key, value in subscriber_list.items():
-                if value['SessionID'] == session_id:
-                    value['SessionKey'] = ''
-                    value['SessionID'] = ''
-                    value['Cookie'] = ''
-
-        elif message.startswith('LOG_OFF'):
-            client_id, cookie = util.get_substring_between_parentheses(message).split(',')
-            if subscriber_list[client_id]['Cookie'] == cookie:
-                subscriber_list[client_id]['Online'] = False
-                subscriber_list[client_id]['SessionKey'] = ''
-                subscriber_list[client_id]['SessionID'] = ''
-                subscriber_list[client_id]['Cookie'] = ''
-
-                if debug:
-                    print('Reset all variables for %s' % client_id)
-
-        else:
-            print('Unknown command')
+        if tcp_client:
+            print('Got TCP connection from', tcp_addr)
+            thread = Thread(target=handle_tcp_connection, args=(tcp_client,))
+            thread.start()
 
 
-def handle_udp_connection():
+def udp_connection():
     if debug:
         print('Start handle_udp_connection()')
 
@@ -212,8 +223,8 @@ def handle_udp_connection():
 
 
 def main():
-    udp_thread = Thread(target=handle_udp_connection, args=())
-    tcp_thread = Thread(target=handle_tcp_connection, args=())
+    udp_thread = Thread(target=udp_connection, args=())
+    tcp_thread = Thread(target=tcp_connection, args=())
 
     udp_thread.start()
     tcp_thread.start()
