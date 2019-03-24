@@ -13,31 +13,61 @@ def main():
 
     client_instances = {
         'Client-ID-A': {
-            'LongTermKey': '123',
+            'LongTermKey': 'aaa',
             'SessionKey': '',
             'SessionID': '',
             'Cookie': ''
         },
         'Client-ID-B': {
-            'LongTermKey': '456',
+            'LongTermKey': 'bbb',
             'SessionKey': '',
             'SessionID': '',
             'Cookie': ''
         },
         'Client-ID-C': {
-            'LongTermKey': '789',
+            'LongTermKey': 'ccc',
             'SessionKey': '',
             'SessionID': '',
             'Cookie': ''
         },
         'Client-ID-D': {
-            'LongTermKey': '000',
+            'LongTermKey': 'ddd',
             'SessionKey': '',
             'SessionID': '',
             'Cookie': ''
         },
         'Client-ID-E': {
-            'LongTermKey': 'abc',
+            'LongTermKey': 'eee',
+            'SessionKey': '',
+            'SessionID': '',
+            'Cookie': ''
+        },
+        'Client-ID-F': {
+            'LongTermKey': 'fff',
+            'SessionKey': '',
+            'SessionID': '',
+            'Cookie': ''
+        },
+        'Client-ID-G': {
+            'LongTermKey': 'ggg',
+            'SessionKey': '',
+            'SessionID': '',
+            'Cookie': ''
+        },
+        'Client-ID-H': {
+            'LongTermKey': 'hhh',
+            'SessionKey': '',
+            'SessionID': '',
+            'Cookie': ''
+        },
+        'Client-ID-I': {
+            'LongTermKey': 'iii',
+            'SessionKey': '',
+            'SessionID': '',
+            'Cookie': ''
+        },
+        'Client-ID-J': {
+            'LongTermKey': 'jjj',
             'SessionKey': '',
             'SessionID': '',
             'Cookie': ''
@@ -48,17 +78,21 @@ def main():
     host = "127.0.0.1"
     udp_port = 7777
     tcp_port = 0
-    is_authenticated = False
+
     new_connection = True
-    connected = False
+    is_authenticated = False
 
     message = input(client_id + ': ')
     if message != 'Log on':
         return
 
+    # new_connection = False
+    # is_authenticated = True
+
     while True:
         # Authentication
-        if not connected:
+        if not is_authenticated:
+
             udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             udp_socket.bind((host, udp_port))
 
@@ -98,7 +132,7 @@ def main():
                 elif message.startswith('CONNECTED'):
                     print('You are now connected :)')
                     udp_socket.close()
-                    connected = True
+                    is_authenticated = True
                     continue
 
                 if debug:
@@ -111,19 +145,33 @@ def main():
         else:
             print('connected now on chat session')
             message = ''
+
             while True:
                 tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 tcp_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
                 print("TCP Socket successfully created")
                 tcp_client_socket.connect((host, 12345))
-
                 raw_input = input(client_id + ': ')
+
                 if raw_input.startswith('Chat '):
                     chat_client = raw_input.split(' ')[1]
-                    message = 'CHAT_REQUEST(%s)' % chat_client
+                    message = 'CHAT_REQUEST(%s,%s)' % (client_id, chat_client)
+
                 elif message.startswith('End chat'):
-                    message = 'END_REQUEST(session-ID)'
+                    # message = 'END_REQUEST(session-ID)'
+                    pass
+
+                elif raw_input == 'Log off':
+                    message = 'LOG_OFF(%s,%s)' % (client_id, rand_cookie)
+
+                    if debug:
+                        print('Sending %s' % message)
+
+                    tcp_client_socket.send(message.encode('utf-8'))
+                    tcp_client_socket.close()
+                    return
+
                 else:
                     message = raw_input
 

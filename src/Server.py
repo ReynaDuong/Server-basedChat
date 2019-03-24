@@ -10,39 +10,75 @@ udp_port = 9999
 tcp_port = 12345
 host = "127.0.0.1"
 debug = True
+global_session_count = randint(0, 1000)
 
 subscriber_list = {
     'Client-ID-A': {
         'Online': False,
-        'LongTermKey': '123',
+        'LongTermKey': 'aaa',
         'SessionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-B': {
         'Online': False,
-        'LongTermKey': '456',
+        'LongTermKey': 'bbb',
         'SessionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-C': {
         'Online': False,
-        'LongTermKey': '789',
+        'LongTermKey': 'ccc',
         'SessionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-D': {
         'Online': False,
-        'LongTermKey': '000',
+        'LongTermKey': 'ddd',
         'SessionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-E': {
         'Online': False,
-        'LongTermKey': 'abc',
+        'LongTermKey': 'eee',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-F': {
+        'Online': False,
+        'LongTermKey': 'fff',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-G': {
+        'Online': False,
+        'LongTermKey': 'ggg',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-H': {
+        'Online': False,
+        'LongTermKey': 'hhh',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-I': {
+        'Online': False,
+        'LongTermKey': 'iii',
+        'SessionKey': '',
+        'SessionID': '',
+        'Cookie': ''
+    },
+    'Client-ID-J': {
+        'Online': False,
+        'LongTermKey': 'jjj',
         'SessionKey': '',
         'SessionID': '',
         'Cookie': ''
@@ -51,6 +87,9 @@ subscriber_list = {
 
 
 def handle_tcp_connection():
+    if debug:
+        print('Start handle_tcp_connection()')
+
     tcp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     print("TCP Socket successfully created")
@@ -71,15 +110,47 @@ def handle_tcp_connection():
 
     if tcp_client:
         print('Got TCP connection from', tcp_addr)
-        data = tcp_client.recv(4096)
-        print(data.decode())
+        message = tcp_client.recv(4096)
+        message = message.decode()
 
-    # Chat session by TCP
-    # Online == True and SessionKey and Cookie is not None
-    # chat session
+        if debug:
+            print('Receiving %s' % message)
+
+        if message.startswith('CHAT_REQUEST'):
+            from_client_id, to_client_id = util.get_substring_between_parentheses(message).split(',')
+
+            if subscriber_list[to_client_id]['Online']:
+                global global_session_count
+                global_session_count = global_session_count + 1
+                message = 'CHAT_START(%d,%d)' % (global_session_count, from_client_id)
+
+        elif message.startswith('END_REQUEST'):
+            session_id = util.get_substring_between_parentheses(message)
+            for key, value in subscriber_list.items():
+                if value['SessionID'] == session_id:
+                    value['SessionKey'] = ''
+                    value['SessionID'] = ''
+                    value['Cookie'] = ''
+
+        elif message.startswith('LOG_OFF'):
+            client_id, cookie = util.get_substring_between_parentheses(message).split(',')
+            if subscriber_list[client_id]['Cookie'] == cookie:
+                subscriber_list[client_id]['Online'] = False
+                subscriber_list[client_id]['SessionKey'] = ''
+                subscriber_list[client_id]['SessionID'] = ''
+                subscriber_list[client_id]['Cookie'] = ''
+
+                if debug:
+                    print('Reset all variables for %s' % client_id)
+
+        else:
+            print('Unknown command')
 
 
 def handle_udp_connection():
+    if debug:
+        print('Start handle_udp_connection()')
+
     udp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print("UDP Socket successfully created")
 
@@ -141,13 +212,13 @@ def handle_udp_connection():
 
 
 def main():
-    udp_thread = Thread(target=handle_udp_connection(), args=())
-    # tcp_thread = Thread(target=handle_tcp_connection(), args=())
+    udp_thread = Thread(target=handle_udp_connection, args=())
+    tcp_thread = Thread(target=handle_tcp_connection, args=())
 
     udp_thread.start()
-    # tcp_thread.start()
+    tcp_thread.start()
 
-    udp_thread.join()
+    # udp_thread.join()
     # tcp_thread.join()
 
 
