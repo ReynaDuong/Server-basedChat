@@ -5,7 +5,6 @@ from random import randint
 import util
 from threading import Thread
 
-
 udp_port = 9999
 tcp_port = 12345
 host = "127.0.0.1"
@@ -19,7 +18,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-B': {
         'Online': False,
@@ -27,7 +26,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-C': {
         'Online': False,
@@ -35,7 +34,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-D': {
         'Online': False,
@@ -43,7 +42,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-E': {
         'Online': False,
@@ -51,7 +50,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-F': {
         'Online': False,
@@ -59,7 +58,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-G': {
         'Online': False,
@@ -67,7 +66,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-H': {
         'Online': False,
@@ -75,7 +74,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-I': {
         'Online': False,
@@ -83,7 +82,7 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     },
     'Client-ID-J': {
         'Online': False,
@@ -91,64 +90,86 @@ subscriber_list = {
         'SessionKey': '',
         'SessionID': '',
         'Cookie': '',
-        'QueuedMessages:': []
+        'QueuedMessages': []
     }
 }
 
 
 def handle_tcp_connection(tcp_client):
-    message = tcp_client.recv(4096)
-    message = message.decode()
-
-    if debug:
-        print('Receiving %s' % message)
-
-    if message.startswith('CHAT_REQUEST'):
-        from_client_id, to_client_id = util.get_substring_between_parentheses(message).split(',')
-
-        if subscriber_list[to_client_id]['Online']:
-            global global_session_count
-            global_session_count = global_session_count + 1
-
-            # send to to_client
-            message = 'CHAT_START(%d,%s)' % (global_session_count, from_client_id)
-            subscriber_list[from_client_id]['QueueMessages'].append(message)
-
-            # send to current client (from_client)
-            message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
-
-        else:
-            message = 'UNREACHABLE(%s)' % to_client_id
+    try:
+        message = tcp_client.recv(4096)
+        message = message.decode()
 
         if debug:
-            print('Sending %s' % message)
+            print('Receiving %s' % message)
 
-        tcp_client.send(message.encode('utf-8'))
+        data = util.get_substring_between_parentheses(message)
+        # from_client_id = data[0]
+        # queued_messages = ''.join(str(e) for e in subscriber_list[from_client_id]['QueuedMessages'])
 
-    elif message.startswith('END_REQUEST'):
-        session_id = util.get_substring_between_parentheses(message)
-        for key, value in subscriber_list.items():
-            if value['SessionID'] == session_id:
-                value['SessionKey'] = ''
-                value['SessionID'] = ''
-                value['Cookie'] = ''
+        if message.startswith('CHAT_REQUEST'):
+            from_client_id, to_client_id = data.split(',')
 
-    elif message.startswith('LOG_OFF'):
-        client_id, cookie = util.get_substring_between_parentheses(message).split(',')
-        if subscriber_list[client_id]['Cookie'] == cookie:
-            subscriber_list[client_id]['Online'] = False
-            subscriber_list[client_id]['SessionKey'] = ''
-            subscriber_list[client_id]['SessionID'] = ''
-            subscriber_list[client_id]['Cookie'] = ''
+            if subscriber_list[to_client_id]['Online']:
+                global global_session_count
+                global_session_count = global_session_count + 1
+
+                # send to to_client
+                message = 'CHAT_START(%d,%s)' % (global_session_count, from_client_id)
+                subscriber_list[to_client_id]['QueuedMessages'].append(message)
+
+                if debug:
+                    print('%s queued messages = %s' %
+                          (to_client_id,
+                           ''.join(str(e) for e in subscriber_list[to_client_id]['QueuedMessages'])))
+
+                # send to current client (from_client)
+                message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
+
+            else:
+                message = 'UNREACHABLE(%s)' % to_client_id
 
             if debug:
-                print('Reset all variables for %s' % client_id)
+                print('Sending %s' % message)
+
+            tcp_client.send(message.encode('utf-8'))
+
+        elif message.startswith('END_REQUEST'):
+            session_id = util.get_substring_between_parentheses(message)
+            for key, value in subscriber_list.items():
+                if value['SessionID'] == session_id:
+                    value['SessionKey'] = ''
+                    value['SessionID'] = ''
+                    value['Cookie'] = ''
+
+        elif message.startswith('PING'):
+            from_client_id = data
+            message = ''.join(str(e) for e in subscriber_list[from_client_id]['QueuedMessages'])
+
+            if debug:
+                print('Sending %s' % message)
+
+            tcp_client.send(message.encode('utf-8'))
+
+        elif message.startswith('LOG_OFF'):
+            client_id, cookie = util.get_substring_between_parentheses(message).split(',')
+            if subscriber_list[client_id]['Cookie'] == cookie:
+                subscriber_list[client_id]['Online'] = False
+                subscriber_list[client_id]['SessionKey'] = ''
+                subscriber_list[client_id]['SessionID'] = ''
+                subscriber_list[client_id]['Cookie'] = ''
+
+                if debug:
+                    print('Reset all variables for %s' % client_id)
+            else:
+                if debug:
+                    print('Receive LOG_OFF command for %s but wrong %s for cookie' % (client_id, cookie))
+
         else:
-            if debug:
-                print('Receive LOG_OFF command for %s but wrong %s for cookie' % (client_id, cookie))
+            print('Unknown command')
 
-    else:
-        print('Unknown command')
+    except socket.timeout:
+        print('Wait too long')
 
     tcp_client.close()
 

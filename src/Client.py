@@ -145,9 +145,11 @@ def chat():
     print("TCP Socket successfully created")
 
     while True:
+        # messages from server
         try:
             message = tcp_client_socket.recv(4096)
-            print('Server: %s' % message.decode())
+            message = message.decode()
+            print('Server: %s' % message)
 
             if message.startswith('CHAT_START'):
                 data = util.get_substring_between_parentheses(message)
@@ -157,6 +159,7 @@ def chat():
             if debug:
                 print('No message from server')
 
+        # user input to send
         raw_input = input(client_id + ': ')
 
         if raw_input.startswith('Chat '):
@@ -176,6 +179,9 @@ def chat():
             tcp_client_socket.send(message.encode('utf-8'))
             tcp_client_socket.close()
             return
+
+        elif raw_input == 'Ping':
+            message = 'PING(%s)' % client_id
 
         else:
             print('Unknown command')
