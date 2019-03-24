@@ -209,13 +209,17 @@ def chat():
         try:
             tcp_client_socket.send(message.encode('utf-8'))
         except OSError:
-            if debug:
+            if debug and not end_session:
                 print('Catch OSError, try to connect TCP socket again')
+
+            tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcp_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            tcp_client_socket.settimeout(2)  # wait to receive data from server
             tcp_client_socket.connect((host, tcp_port))
             tcp_client_socket.send(message.encode('utf-8'))
 
         if end_session:
-            # tcp_client_socket.close()
+            tcp_client_socket.close()
             return
 
 
