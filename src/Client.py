@@ -10,9 +10,10 @@ import msvcrt
 host = "127.0.0.1"
 udp_port = 7777
 tcp_port = 0
-debug = False
+debug = True
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
+refresh_timeout = 10    # seconds
 
 client_instances = {
     'Client-ID-A': {
@@ -78,7 +79,7 @@ client_instances = {
 }
 
 
-def keyboard_listener(timeout):
+def keyboard_listener():
     print(client_id + ': ', end='')
     sys.stdout.flush()
     time_started = time.time()
@@ -88,7 +89,7 @@ def keyboard_listener(timeout):
     # time.sleep(timeout)
 
     while True:
-        if time.time() > time_started + timeout:
+        if time.time() > time_started + refresh_timeout:
             print('Time out.')
             keyboard_input = 'Ping'
             return
@@ -103,8 +104,6 @@ def keyboard_listener(timeout):
 
         # enter
         if ordinal == 13:
-            print('keyboard_input = %s' % keyboard_input)
-            # sys.stdout.flush()
             return
         elif 32 <= ordinal <= 126:
             keyboard_input += c.decode('utf-8')
@@ -213,6 +212,10 @@ def chat():
                 client_instances[client_id]['Cookie'] = ''
                 print('Chat ended')
 
+            elif message.startswith('CHAT'):
+                data = util.get_substring_between_parentheses(message).split(',')[2]
+                print('Server: %s' % data)
+
             elif message.startswith('NO_DATA'):
                 print('No message from server')
 
@@ -221,8 +224,7 @@ def chat():
                 print('No message from server. Timeout.')
 
         # user input to send
-        # raw_input = input(client_id + ": ")
-        keyboard_listener(2)
+        keyboard_listener()
         raw_input = keyboard_input
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
@@ -245,8 +247,7 @@ def chat():
 
         else:
             # chat message
-            print('Unknown command')
-            continue
+            message = 'CHAT(%s,%s,%s)' % (client_id,client_instances[client_id]['SessionID'], raw_input)
 
         if debug:
             print('Sending %s' % message)

@@ -173,6 +173,16 @@ def handle_tcp_connection(tcp_client):
                     print('Receive LOG_OFF command for %s but wrong %s for cookie' %
                           (client_id, cookie))
 
+        elif message.startswith('CHAT'):
+            client_id, session_id, data = data.split(',')
+
+            for key, value in clients.items():
+                if value['SessionID'] == session_id and key != client_id:
+                    value['QueuedMessages'].append(message)
+                    break
+
+            required_ack = False
+
         else:
             print('Unknown command')
 
