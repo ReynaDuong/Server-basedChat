@@ -10,7 +10,7 @@ import msvcrt
 host = "127.0.0.1"
 udp_port = 7777
 tcp_port = 0
-debug = True
+debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
 refresh_timeout = 10    # seconds
@@ -105,6 +105,8 @@ def keyboard_listener():
         # enter
         if ordinal == 13:
             return
+        elif ordinal == 8:
+            keyboard_input = keyboard_input[:-1]
         elif 32 <= ordinal <= 126:
             keyboard_input += c.decode('utf-8')
         else:
