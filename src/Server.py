@@ -94,6 +94,8 @@ clients = {
     }
 }
 
+histories = []
+
 
 def handle_tcp_connection(tcp_client):
     required_ack = True
@@ -135,11 +137,6 @@ def handle_tcp_connection(tcp_client):
             client_id, session_id = data.split(',')
 
             for key, value in clients.items():
-
-                if debug:
-                    print(key)
-                    print(value)
-
                 if value['SessionID'] == session_id:
 
                     if debug:

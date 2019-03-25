@@ -1,20 +1,18 @@
-import time
 import socket
 import sys
-import sys
 import time
-import threading
-import queue
 import util
 import hashlib
+import msvcrt
 
 
 # Define the port on which you want to connect
 host = "127.0.0.1"
 udp_port = 7777
 tcp_port = 0
-debug = True
+debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
+keyboard_input = ''
 
 client_instances = {
     'Client-ID-A': {
@@ -78,6 +76,40 @@ client_instances = {
         'Cookie': ''
     }
 }
+
+
+def keyboard_listener(timeout):
+    print(client_id + ': ', end='')
+    sys.stdout.flush()
+    time_started = time.time()
+    global keyboard_input
+    keyboard_input = ''
+    # keyboard_input = 'Ping'
+    # time.sleep(timeout)
+
+    while True:
+        if time.time() > time_started + timeout:
+            print('Time out.')
+            keyboard_input = 'Ping'
+            return
+
+        if msvcrt.kbhit():
+            break
+
+    # print(client_id + ': ', end='')
+    while True:
+        c = msvcrt.getche()
+        ordinal = ord(c)
+
+        # enter
+        if ordinal == 13:
+            print('keyboard_input = %s' % keyboard_input)
+            # sys.stdout.flush()
+            return
+        elif 32 <= ordinal <= 126:
+            keyboard_input += c.decode('utf-8')
+        else:
+            pass
 
 
 def authenticate():
@@ -189,7 +221,9 @@ def chat():
                 print('No message from server. Timeout.')
 
         # user input to send
-        raw_input = input(client_id + ': ')
+        # raw_input = input(client_id + ": ")
+        keyboard_listener(2)
+        raw_input = keyboard_input
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
@@ -211,7 +245,6 @@ def chat():
 
         else:
             # chat message
-
             print('Unknown command')
             continue
 
