@@ -176,10 +176,24 @@ def handle_tcp_connection(tcp_client):
         elif message.startswith('CHAT'):
             client_id, session_id, data = data.split(',')
 
+            history = {
+                'SessionID': session_id,
+                'Sender': client_id,
+                'Message': data
+            }
+
+            histories.append(history)
+
             for key, value in clients.items():
                 if value['SessionID'] == session_id and key != client_id:
                     value['QueuedMessages'].append(message)
                     break
+
+            required_ack = False
+
+        elif message.startswith('HISTORY_REQ'):
+            if debug:
+                print(histories)
 
             required_ack = False
 

@@ -222,6 +222,14 @@ def chat():
             elif message.startswith('NO_DATA'):
                 print('No message from server')
 
+            elif message.startswith('HISTORY_RESP'):
+                data = util.get_substring_between_parentheses(message).split(',')
+                session = data[0]
+                sender = data[1]
+                past_message = data[2]
+                print("%10s%20s%s") % (session, sender, past_message)
+                continue
+
         except socket.timeout:
             if debug:
                 print('No message from server. Timeout.')
@@ -245,6 +253,10 @@ def chat():
         elif raw_input == 'Log off':
             message = 'LOG_OFF(%s,%s)' % (client_id, client_instances[client_id]['Cookie'])
             end_session = True
+
+        elif raw_input.startswith('History'):
+            chat_client = raw_input.split(' ')[1]
+            message = 'HISTORY_REQ(%s,%s)' % (client_id, chat_client)
 
         elif raw_input == 'Ping':
             message = 'PING(%s)' % client_id
