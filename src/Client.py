@@ -85,8 +85,6 @@ def keyboard_listener():
     time_started = time.time()
     global keyboard_input
     keyboard_input = ''
-    # keyboard_input = 'Ping'
-    # time.sleep(timeout)
 
     while True:
         if time.time() > time_started + refresh_timeout:
@@ -104,8 +102,11 @@ def keyboard_listener():
 
         # enter
         if ordinal == 13:
+            keyboard_input = keyboard_input.replace('\r', '')
+            print(client_id + ': ')
+            sys.stdout.flush()
             return
-        elif ordinal == 8:
+        elif ordinal == 8 or ordinal == 127:
             keyboard_input = keyboard_input[:-1]
         elif 32 <= ordinal <= 126:
             keyboard_input += c.decode('utf-8')
@@ -227,6 +228,7 @@ def chat():
 
         # user input to send
         keyboard_listener()
+        sys.stdout.flush()
         raw_input = keyboard_input
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
