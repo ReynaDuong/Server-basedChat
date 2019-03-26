@@ -13,7 +13,8 @@ tcp_port = 0
 debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
-refresh_timeout = 10    # seconds
+refresh_timeout = 5    # seconds
+
 
 client_instances = {
     'Client-ID-A': {
@@ -88,7 +89,10 @@ def keyboard_listener():
 
     while True:
         if time.time() > time_started + refresh_timeout:
-            print('Time out.')
+            if debug:
+                print('Timeout')
+            else:
+                print('\r', end='')
             keyboard_input = 'Ping'
             return
 
@@ -204,7 +208,7 @@ def chat():
                 if debug:
                     print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionID']))
 
-                print('Chat started')
+                print('Chat started' + ' ' * 10)
 
             elif message.startswith('UNREACHABLE'):
                 print('Correspondent is unreachable')
@@ -213,14 +217,17 @@ def chat():
                 client_instances[client_id]['SessionID'] = ''
                 client_instances[client_id]['SessionKey'] = ''
                 client_instances[client_id]['Cookie'] = ''
-                print('Chat ended')
+                print('Chat ended' + ' ' * 10)
 
             elif message.startswith('CHAT'):
-                data = util.get_substring_between_parentheses(message).split(',')[2]
-                print('Server: %s' % data)
+                data = util.get_substring_between_parentheses(message).split(',')
+                print('%s: %s' % (data[0], data[2]))
 
             elif message.startswith('NO_DATA'):
-                print('No message from server')
+                if debug:
+                    print('No message from server')
+                else:
+                    print('\r', end='')
 
             elif message.startswith('HISTORY_RESP'):
                 data = util.get_substring_between_parentheses(message).split(',')
@@ -241,14 +248,18 @@ def chat():
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
-            message = 'CHAT_REQUEST(%s,%s)' % (client_id, chat_client)
+            if chat_client == client_id:
+                print('Error: trying to chat to yourself')
+                message = ''
+            else:
+                message = 'CHAT_REQUEST(%s,%s)' % (client_id, chat_client)
 
         elif raw_input == 'End chat':
             message = 'END_REQUEST(%s,%s)' % (client_id, client_instances[client_id]['SessionID'])
             client_instances[client_id]['SessionID'] = ''
             client_instances[client_id]['SessionKey'] = ''
             client_instances[client_id]['Cookie'] = ''
-            print('Chat ended')
+            print('Chat ended' + ' ' * (len(client_id) - len('Chat ended') + 1))
 
         elif raw_input == 'Log off':
             message = 'LOG_OFF(%s,%s)' % (client_id, client_instances[client_id]['Cookie'])
@@ -262,8 +273,14 @@ def chat():
             message = 'PING(%s)' % client_id
 
         else:
-            # chat message
-            message = 'CHAT(%s,%s,%s)' % (client_id,client_instances[client_id]['SessionID'], raw_input)
+            if client_instances[client_id]['SessionID'] == '':
+                message = ''
+                print('Unknown command. Not connected to chat session yet.')
+            else:
+                message = 'CHAT(%s,%s,%s)' % (client_id, client_instances[client_id]['SessionID'], raw_input)
+
+        if message == '':
+            continue
 
         if debug:
             print('Sending %s' % message)

@@ -176,18 +176,19 @@ def handle_tcp_connection(tcp_client):
         elif message.startswith('CHAT'):
             client_id, session_id, data = data.split(',')
 
-            history = {
-                'SessionID': session_id,
-                'Sender': client_id,
-                'Message': data
-            }
+            if clients[client_id]['SessionID'] == session_id:
+                history = {
+                    'SessionID': session_id,
+                    'Sender': client_id,
+                    'Message': data
+                }
 
-            histories.append(history)
+                histories.append(history)
 
-            for key, value in clients.items():
-                if value['SessionID'] == session_id and key != client_id:
-                    value['QueuedMessages'].append(message)
-                    break
+                for key, value in clients.items():
+                    if value['SessionID'] == session_id and key != client_id:
+                        value['QueuedMessages'].append(message)
+                        break
 
             required_ack = False
 
