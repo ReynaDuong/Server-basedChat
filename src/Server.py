@@ -196,6 +196,23 @@ def handle_tcp_connection(tcp_client):
             if debug:
                 print(histories)
 
+            client_id = data[0]
+
+            '''
+            NOTE: this logic down here only works if both client send something
+            in the session. If either of them does not send anything and just
+            receiving, then this logic will miss that session
+            '''
+
+            # find all distinct sessions of the current client
+            sessions_of_current_client = []
+            for history in histories:
+                if history['Sender'] == client_id and \
+                        history['SessionID'] not in sessions_of_current_client:
+                    sessions_of_current_client.append(history['SessionID'])
+
+            # find all messages in the previously found sessions
+
             required_ack = False
 
         else:
