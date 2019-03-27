@@ -164,7 +164,7 @@ def authenticate():
                 print('Server: Fail to authenticate :( meow')
                 udp_socket.close()
                 break
-
+ 
             elif message.startswith('CONNECTED'):
                 print('You are now connected :)')
                 udp_socket.close()

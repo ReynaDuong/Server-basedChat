@@ -182,13 +182,12 @@ def handle_tcp_connection(tcp_client):
                     'Sender': client_id,
                     'Message': data
                 }
-
                 histories.append(history)
 
-                for key, value in clients.items():
-                    if value['SessionID'] == session_id and key != client_id:
-                        value['QueuedMessages'].append(message)
-                        break
+            for key, value in clients.items():
+                if value['SessionID'] == session_id and key != client_id:
+                    value['QueuedMessages'].append(message)
+                    break
 
             required_ack = False
 
@@ -212,6 +211,10 @@ def handle_tcp_connection(tcp_client):
                     sessions_of_current_client.append(history['SessionID'])
 
             # find all messages in the previously found sessions
+            for history in histories:
+                if history['SessionID'] in sessions_of_current_client:
+                    message = 'HISTORY_RESP(%s,%s,%s)' % (history['SessionID'], history['Sender'], history['Message'])
+                    tcp_client.send(message.endswith('utf-8'))
 
             required_ack = False
 
