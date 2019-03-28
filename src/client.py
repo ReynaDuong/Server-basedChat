@@ -5,6 +5,7 @@ import utility
 import hashlib
 import msvcrt
 import timeout
+import uuid
 
 
 # Define the port on which you want to connect
@@ -14,7 +15,7 @@ tcp_port = 0
 debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
-default_keyboard_input_value = '33987748-6484-4a22-82f8-6bfb5838feba'
+default_keyboard_input_value = str(uuid.uuid4())
 
 
 client_instances = {
