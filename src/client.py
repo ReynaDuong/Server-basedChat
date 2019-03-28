@@ -14,6 +14,7 @@ tcp_port = 0
 debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
+default_keyboard_input_value = '33987748-6484-4a22-82f8-6bfb5838feba'
 
 
 client_instances = {
@@ -101,7 +102,7 @@ def keyboard_listener():
                 print('Timeout')
             else:
                 print('\r', end='')
-            keyboard_input = 'Ping'
+            keyboard_input = default_keyboard_input_value
             return
 
         if msvcrt.kbhit():
@@ -197,9 +198,9 @@ def authenticate():
 
 def chat():
     refresh_timeout = timeout.default_refresh_timeout
-
-    print('connected now on chat session')
+    last_activity_time = time.time()
     end_session = False
+    is_session_expired = False
 
     tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -265,8 +266,18 @@ def chat():
         # user input to send
         keyboard_listener()
         sys.stdout.flush()
-        raw_input = keyboard_input
 
+        if keyboard_input == default_keyboard_input_value:
+            raw_input = 'Ping'
+        else:
+            raw_input = keyboard_input
+            last_activity_time = time.time()
+
+        if time.time() - last_activity_time > timeout.inactivity_timeout:
+            raw_input = 'Log off'
+            is_session_expired = True
+
+        # reset refresh_timeout as needed
         if refresh_timeout == timeout.history_refresh_timeout and raw_input != 'Ping':
             refresh_timeout = timeout.default_refresh_timeout
 
@@ -291,6 +302,9 @@ def chat():
             client_instances[client_id]['EncryptionKey'] = ''
             client_instances[client_id]['SessionID'] = ''
             client_instances[client_id]['Cookie'] = ''
+
+            if is_session_expired:
+                print('Log off due to long inactivity time')
 
             end_session = True
 
