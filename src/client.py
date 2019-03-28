@@ -4,18 +4,16 @@ import time
 import utility
 import hashlib
 import msvcrt
-import timeout
-import uuid
+import constant
 
 
 # Define the port on which you want to connect
 host = "127.0.0.1"
 udp_port = 7777
 tcp_port = 0
-debug = False
+debug = True
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
-default_keyboard_input_value = str(uuid.uuid4())
 
 
 client_instances = {
@@ -98,12 +96,12 @@ def keyboard_listener():
     keyboard_input = ''
 
     while True:
-        if time.time() > time_started + timeout.keyboard_wait_timeout:
+        if time.time() > time_started + constant.keyboard_wait_timeout:
             if debug:
                 print('Timeout')
             else:
                 print('\r', end='')
-            keyboard_input = default_keyboard_input_value
+            keyboard_input = constant.default_keyboard_input_value
             return
 
         if msvcrt.kbhit():
@@ -130,6 +128,7 @@ def keyboard_listener():
 
 def authenticate():
     new_connection = True
+    is_encrypted = False
 
     message = input(client_id + ': ')
     if message != 'Log on':
@@ -155,9 +154,24 @@ def authenticate():
             message = message.decode('utf-8')
 
             if debug:
-                print('Receiving %s from %s' % (message, udp_addr))
+                print('Receiving (encrypted) %s from %s' % (message, udp_addr))
 
-            if message.startswith('CHALLENGE'):
+            if is_encrypted:
+                message = utility.decrypt(message, client_instances[client_id]['EncryptionKey'], constant.default_iv)
+
+                if debug:
+                    print('Receiving (decrypted) %s' % message)
+
+            if message.startswith('AUTH_FAIL'):
+                print('Server: Fail to authenticate :( meow')
+                udp_socket.close()
+                client_instances[client_id]['AuthenticationKey'] = ''
+                client_instances[client_id]['EncryptionKey'] = ''
+                client_instances[client_id]['SessionID'] = ''
+                client_instances[client_id]['Cookie'] = ''
+                sys.exit(-1)
+
+            elif message.startswith('CHALLENGE'):
                 rand = utility.get_substring_between_parentheses(message)
                 response = hashlib.sha1(client_instances[client_id]['LongTermKey'].encode('utf-8') +
                                         rand.encode()).hexdigest()
@@ -168,6 +182,7 @@ def authenticate():
                 client_instances[client_id]['EncryptionKey'] = session_key
 
                 message = 'RESPONSE(%s,%s)' % (client_id, response)
+                is_encrypted = True
 
             elif message.startswith('AUTH_SUCCESS'):
                 cookie, port = utility.get_substring_between_parentheses(message).split(',')
@@ -176,19 +191,13 @@ def authenticate():
                 client_instances[client_id]['Cookie'] = cookie
                 message = 'CONNECT(%s)' % cookie
 
-            elif message.startswith('AUTH_FAIL'):
-                print('Server: Fail to authenticate :( meow')
-                udp_socket.close()
-                client_instances[client_id]['AuthenticationKey'] = ''
-                client_instances[client_id]['EncryptionKey'] = ''
-                client_instances[client_id]['SessionID'] = ''
-                client_instances[client_id]['Cookie'] = ''
-                sys.exit(-1)
-
             elif message.startswith('CONNECTED'):
                 print('You are now connected :)')
                 udp_socket.close()
                 break
+
+            if is_encrypted and not message.startswith('RESP'):
+                message = utility.encrypt(message, client_instances[client_id]['EncryptionKey'], constant.default_iv)
 
             if debug:
                 print('Sending %s to %s' % (message, udp_addr))
@@ -198,7 +207,7 @@ def authenticate():
 
 
 def chat():
-    refresh_timeout = timeout.default_refresh_timeout
+    refresh_timeout = constant.default_refresh_timeout
     last_activity_time = time.time()
     end_session = False
     is_session_expired = False
@@ -220,6 +229,8 @@ def chat():
                 continue
 
             message = message.decode()
+            message = utility.decrypt(message, client_instances[client_id]['EncryptionKey'], constant.default_iv)
+
             if debug:
                 print('Server: %s' % message)
 
@@ -268,19 +279,19 @@ def chat():
         keyboard_listener()
         sys.stdout.flush()
 
-        if keyboard_input == default_keyboard_input_value:
+        if keyboard_input == constant.default_keyboard_input_value:
             raw_input = 'Ping'
         else:
             raw_input = keyboard_input
             last_activity_time = time.time()
 
-        if time.time() - last_activity_time > timeout.inactivity_timeout:
+        if time.time() - last_activity_time > constant.inactivity_timeout:
             raw_input = 'Log off'
             is_session_expired = True
 
         # reset refresh_timeout as needed
-        if refresh_timeout == timeout.history_refresh_timeout and raw_input != 'Ping':
-            refresh_timeout = timeout.default_refresh_timeout
+        if refresh_timeout == constant.history_refresh_timeout and raw_input != 'Ping':
+            refresh_timeout = constant.default_refresh_timeout
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
@@ -312,7 +323,7 @@ def chat():
         elif raw_input.startswith('History'):
             chat_client = raw_input.split(' ')[1]
             message = 'HISTORY_REQ(%s,%s)' % (client_id, chat_client)
-            refresh_timeout = timeout.history_refresh_timeout
+            refresh_timeout = constant.history_refresh_timeout
 
         elif raw_input == 'Ping':
             message = 'PING(%s)' % client_id
@@ -325,7 +336,12 @@ def chat():
                 message = 'CHAT(%s,%s,%s)' % (client_id, client_instances[client_id]['SessionID'], raw_input)
 
         if debug:
-            print('Sending %s' % message)
+            print('Sending (raw) %s' % message)
+
+        message = utility.encrypt(message, client_instances[client_id]['EncryptionKey'], constant.default_iv)
+
+        if debug:
+            print('Sending (encrypted) %s' % message)
 
         try:
             tcp_client_socket.send(message.encode('utf-8'))
@@ -346,7 +362,7 @@ def chat():
 
 def main():
     authenticate()
-    chat()
+    # chat()
 
 
 main()

@@ -4,12 +4,15 @@ import hashlib
 from random import randint
 import utility
 from threading import Thread
+import constant
+
 
 udp_port = 9999
 tcp_port = 12345
 host = "127.0.0.1"
 debug = True
 global_session_count = randint(0, 1000)
+
 
 clients = {
     'Client-ID-A': {
@@ -297,6 +300,8 @@ def udp_connection():
     if debug:
         print('Start handle_udp_connection()')
 
+    is_encrypted_message = False
+    client_id = ''
     udp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print("UDP Socket successfully created")
 
@@ -317,7 +322,13 @@ def udp_connection():
             message = message.decode()
 
             if debug:
-                print('Receiving %s' % message)
+                print('Receiving (encrypted) %s' % message)
+
+            if is_encrypted_message:
+                message = utility.decrypt(message, clients[client_id]['EncryptionKey'], constant.default_iv)
+
+                if debug:
+                    print('Receiving (decrypted) %s' % message)
 
             if message.startswith('HELLO'):
                 client_id = utility.get_substring_between_parentheses(message)
@@ -332,9 +343,6 @@ def udp_connection():
                                               str(challenge)).encode()).hexdigest()
                 clients[client_id]['EncryptionKey'] = session_key
 
-                if debug:
-                    print('xres = %s' % xres)
-
                 message = 'CHALLENGE(%d)' % challenge
 
             elif message.startswith('RESPONSE'):
@@ -343,6 +351,7 @@ def udp_connection():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
                     clients[client_id]['Cookie'] = str(cookie)
                     message = 'AUTH_SUCCESS(%d,%d)' % (cookie, tcp_port)
+                    is_encrypted_message = True
                 else:
                     message = 'AUTH_FAIL'
                     clients[client_id]['Online'] = False
@@ -357,6 +366,11 @@ def udp_connection():
             if debug:
                 print('Sending %s' % message)
 
+            if is_encrypted_message:
+                message = utility.encrypt(message, clients[client_id]['EncryptionKey'], constant.default_iv)
+                if debug:
+                    print('Sending %s' % message)
+
         udp_server_socket.sendto(message.encode(), udp_addr)
 
         # close here cause next connection not to be accepted?
@@ -365,10 +379,10 @@ def udp_connection():
 
 def main():
     udp_thread = Thread(target=udp_connection, args=())
-    tcp_thread = Thread(target=tcp_connection, args=())
+    # tcp_thread = Thread(target=tcp_connection, args=())
 
     udp_thread.start()
-    tcp_thread.start()
+    # tcp_thread.start()
 
 
 main()
