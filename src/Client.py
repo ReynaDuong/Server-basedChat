@@ -5,7 +5,6 @@ import Utility
 import hashlib
 import msvcrt
 
-
 # Define the port on which you want to connect
 host = "127.0.0.1"
 udp_port = 7777
@@ -16,17 +15,18 @@ keyboard_input = ''
 # default_refresh_timeout_in_second = 5
 refresh_timeout = 5
 
-
 client_instances = {
     'Client-ID-A': {
         'LongTermKey': 'aaa',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-B': {
         'LongTermKey': 'bbb',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
@@ -39,12 +39,14 @@ client_instances = {
     'Client-ID-D': {
         'LongTermKey': 'ddd',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-E': {
         'LongTermKey': 'eee',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
@@ -57,24 +59,28 @@ client_instances = {
     'Client-ID-G': {
         'LongTermKey': 'ggg',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-H': {
         'LongTermKey': 'hhh',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-I': {
         'LongTermKey': 'iii',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-J': {
         'LongTermKey': 'jjj',
         'AuthenticationKey': '',
+        'EncryptionKey': '',
         'SessionID': '',
         'Cookie': ''
     }
@@ -152,6 +158,12 @@ def authenticate():
                 rand = Utility.get_substring_between_parentheses(message)
                 response = hashlib.sha1(client_instances[client_id]['LongTermKey'].encode('utf-8') +
                                         rand.encode()).hexdigest()
+                client_instances[client_id]['AuthenticationKey'] = response
+
+                session_key = hashlib.sha512(client_instances[client_id]['LongTermKey'].encode('utf-8') +
+                                             rand.encode()).hexdigest()
+                client_instances[client_id]['EncryptionKey'] = session_key
+
                 message = 'RESPONSE(%s,%s)' % (client_id, response)
 
             elif message.startswith('AUTH_SUCCESS'):
@@ -164,8 +176,12 @@ def authenticate():
             elif message.startswith('AUTH_FAIL'):
                 print('Server: Fail to authenticate :( meow')
                 udp_socket.close()
-                break
- 
+                client_instances[client_id]['AuthenticationKey'] = ''
+                client_instances[client_id]['EncryptionKey'] = ''
+                client_instances[client_id]['SessionID'] = ''
+                client_instances[client_id]['Cookie'] = ''
+                sys.exit(-1)
+
             elif message.startswith('CONNECTED'):
                 print('You are now connected :)')
                 udp_socket.close()
@@ -221,7 +237,6 @@ def chat():
 
                 elif msg.startswith('END_NOTIF'):
                     client_instances[client_id]['SessionID'] = ''
-                    client_instances[client_id]['AuthenticationKey'] = ''
                     client_instances[client_id]['Cookie'] = ''
                     print('Chat ended' + ' ' * 10)
 
@@ -271,6 +286,11 @@ def chat():
 
         elif raw_input == 'Log off':
             message = 'LOG_OFF(%s,%s)' % (client_id, client_instances[client_id]['Cookie'])
+            client_instances[client_id]['AuthenticationKey'] = ''
+            client_instances[client_id]['EncryptionKey'] = ''
+            client_instances[client_id]['SessionID'] = ''
+            client_instances[client_id]['Cookie'] = ''
+
             end_session = True
 
         elif raw_input.startswith('History'):
