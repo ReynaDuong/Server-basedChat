@@ -2,7 +2,7 @@ import socket
 import sys
 import hashlib
 from random import randint
-import Utility
+import utility
 from threading import Thread
 
 udp_port = 9999
@@ -118,7 +118,7 @@ def handle_tcp_connection(tcp_client):
         if debug:
             print('Receiving %s' % message)
 
-        data = Utility.get_substring_between_parentheses(message)
+        data = utility.get_substring_between_parentheses(message)
 
         if message.startswith('CHAT_REQUEST'):
             from_client_id, to_client_id = data.split(',')
@@ -172,7 +172,7 @@ def handle_tcp_connection(tcp_client):
             clients[from_client_id]['QueuedMessages'] = []
 
         elif message.startswith('LOG_OFF'):
-            client_id, cookie = Utility.get_substring_between_parentheses(message).split(',')
+            client_id, cookie = utility.get_substring_between_parentheses(message).split(',')
             required_ack = False
 
             if clients[client_id]['Cookie'] == cookie:
@@ -320,7 +320,7 @@ def udp_connection():
                 print('Receiving %s' % message)
 
             if message.startswith('HELLO'):
-                client_id = Utility.get_substring_between_parentheses(message)
+                client_id = utility.get_substring_between_parentheses(message)
                 clients[client_id]['Online'] = True
                 challenge = randint(-1 * sys.maxsize - 1, sys.maxsize)
 
@@ -338,7 +338,7 @@ def udp_connection():
                 message = 'CHALLENGE(%d)' % challenge
 
             elif message.startswith('RESPONSE'):
-                client_id, res = Utility.get_substring_between_parentheses(message).split(',')
+                client_id, res = utility.get_substring_between_parentheses(message).split(',')
                 if clients[client_id]['AuthenticationKey'] == res.strip():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
                     clients[client_id]['Cookie'] = str(cookie)

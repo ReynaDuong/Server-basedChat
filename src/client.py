@@ -1,9 +1,11 @@
 import socket
 import sys
 import time
-import Utility
+import utility
 import hashlib
 import msvcrt
+import timeout
+
 
 # Define the port on which you want to connect
 host = "127.0.0.1"
@@ -12,8 +14,7 @@ tcp_port = 0
 debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
-# default_refresh_timeout_in_second = 5
-refresh_timeout = 5
+
 
 client_instances = {
     'Client-ID-A': {
@@ -95,7 +96,7 @@ def keyboard_listener():
     keyboard_input = ''
 
     while True:
-        if time.time() > time_started + refresh_timeout:
+        if time.time() > time_started + timeout.keyboard_wait_timeout:
             if debug:
                 print('Timeout')
             else:
@@ -155,7 +156,7 @@ def authenticate():
                 print('Receiving %s from %s' % (message, udp_addr))
 
             if message.startswith('CHALLENGE'):
-                rand = Utility.get_substring_between_parentheses(message)
+                rand = utility.get_substring_between_parentheses(message)
                 response = hashlib.sha1(client_instances[client_id]['LongTermKey'].encode('utf-8') +
                                         rand.encode()).hexdigest()
                 client_instances[client_id]['AuthenticationKey'] = response
@@ -167,7 +168,7 @@ def authenticate():
                 message = 'RESPONSE(%s,%s)' % (client_id, response)
 
             elif message.startswith('AUTH_SUCCESS'):
-                cookie, port = Utility.get_substring_between_parentheses(message).split(',')
+                cookie, port = utility.get_substring_between_parentheses(message).split(',')
                 global tcp_port
                 tcp_port = int(port)
                 client_instances[client_id]['Cookie'] = cookie
@@ -195,7 +196,7 @@ def authenticate():
 
 
 def chat():
-    global refresh_timeout
+    refresh_timeout = timeout.default_refresh_timeout
 
     print('connected now on chat session')
     end_session = False
@@ -224,7 +225,7 @@ def chat():
 
             for msg in messages:
                 if msg.startswith('CHAT_START'):
-                    data = Utility.get_substring_between_parentheses(msg)
+                    data = utility.get_substring_between_parentheses(msg)
                     client_instances[client_id]['SessionID'] = data.split(',')[0]
 
                     if debug:
@@ -241,7 +242,7 @@ def chat():
                     print('Chat ended' + ' ' * 10)
 
                 elif msg.startswith('CHAT'):
-                    data = Utility.get_substring_between_parentheses(msg).split(',')
+                    data = utility.get_substring_between_parentheses(msg).split(',')
                     print('%s: %s' % (data[0], data[2]))
 
                 elif msg.startswith('NO_DATA'):
@@ -251,7 +252,7 @@ def chat():
                         print('\r', end='')
 
                 elif msg.startswith('HISTORY_RESP'):
-                    data = Utility.get_substring_between_parentheses(msg).split(',')
+                    data = utility.get_substring_between_parentheses(msg).split(',')
                     session = data[0]
                     sender = data[1]
                     past_message = data[2]
@@ -266,8 +267,8 @@ def chat():
         sys.stdout.flush()
         raw_input = keyboard_input
 
-        if refresh_timeout != 5 and raw_input != 'Ping':
-            refresh_timeout = 5
+        if refresh_timeout == timeout.history_refresh_timeout and raw_input != 'Ping':
+            refresh_timeout = timeout.default_refresh_timeout
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
@@ -296,7 +297,7 @@ def chat():
         elif raw_input.startswith('History'):
             chat_client = raw_input.split(' ')[1]
             message = 'HISTORY_REQ(%s,%s)' % (client_id, chat_client)
-            refresh_timeout = 1
+            refresh_timeout = timeout.history_refresh_timeout
 
         elif raw_input == 'Ping':
             message = 'PING(%s)' % client_id
