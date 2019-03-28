@@ -20,61 +20,61 @@ refresh_timeout = 5
 client_instances = {
     'Client-ID-A': {
         'LongTermKey': 'aaa',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-B': {
         'LongTermKey': 'bbb',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-C': {
         'LongTermKey': 'ccc',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-D': {
         'LongTermKey': 'ddd',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-E': {
         'LongTermKey': 'eee',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-F': {
         'LongTermKey': 'fff',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-G': {
         'LongTermKey': 'ggg',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-H': {
         'LongTermKey': 'hhh',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-I': {
         'LongTermKey': 'iii',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     },
     'Client-ID-J': {
         'LongTermKey': 'jjj',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': ''
     }
@@ -221,7 +221,7 @@ def chat():
 
                 elif msg.startswith('END_NOTIF'):
                     client_instances[client_id]['SessionID'] = ''
-                    client_instances[client_id]['SessionKey'] = ''
+                    client_instances[client_id]['AuthenticationKey'] = ''
                     client_instances[client_id]['Cookie'] = ''
                     print('Chat ended' + ' ' * 10)
 
@@ -265,7 +265,7 @@ def chat():
         elif raw_input == 'End chat':
             message = 'END_REQUEST(%s,%s)' % (client_id, client_instances[client_id]['SessionID'])
             client_instances[client_id]['SessionID'] = ''
-            client_instances[client_id]['SessionKey'] = ''
+            client_instances[client_id]['AuthenticationKey'] = ''
             client_instances[client_id]['Cookie'] = ''
             print('Chat ended' + ' ' * (len(client_id) - len('Chat ended') + 1))
 

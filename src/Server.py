@@ -15,7 +15,7 @@ clients = {
     'Client-ID-A': {
         'Online': False,
         'LongTermKey': 'aaa',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -23,7 +23,7 @@ clients = {
     'Client-ID-B': {
         'Online': False,
         'LongTermKey': 'bbb',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -31,7 +31,7 @@ clients = {
     'Client-ID-C': {
         'Online': False,
         'LongTermKey': 'ccc',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -39,7 +39,7 @@ clients = {
     'Client-ID-D': {
         'Online': False,
         'LongTermKey': 'ddd',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -47,7 +47,7 @@ clients = {
     'Client-ID-E': {
         'Online': False,
         'LongTermKey': 'eee',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -55,7 +55,7 @@ clients = {
     'Client-ID-F': {
         'Online': False,
         'LongTermKey': 'fff',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -63,7 +63,7 @@ clients = {
     'Client-ID-G': {
         'Online': False,
         'LongTermKey': 'ggg',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -71,7 +71,7 @@ clients = {
     'Client-ID-H': {
         'Online': False,
         'LongTermKey': 'hhh',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -79,7 +79,7 @@ clients = {
     'Client-ID-I': {
         'Online': False,
         'LongTermKey': 'iii',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -87,7 +87,7 @@ clients = {
     'Client-ID-J': {
         'Online': False,
         'LongTermKey': 'jjj',
-        'SessionKey': '',
+        'AuthenticationKey': '',
         'SessionID': '',
         'Cookie': '',
         'QueuedMessages': []
@@ -148,7 +148,7 @@ def handle_tcp_connection(tcp_client):
                     if debug:
                         print('%s to end chat: ' % key)
 
-                    value['SessionKey'] = ''
+                    value['AuthenticationKey'] = ''
                     value['SessionID'] = ''
                     value['Cookie'] = ''
 
@@ -168,7 +168,7 @@ def handle_tcp_connection(tcp_client):
 
             if clients[client_id]['Cookie'] == cookie:
                 clients[client_id]['Online'] = False
-                clients[client_id]['SessionKey'] = ''
+                clients[client_id]['AuthenticationKey'] = ''
                 clients[client_id]['SessionID'] = ''
                 clients[client_id]['Cookie'] = ''
 
@@ -317,7 +317,7 @@ def udp_connection():
                 challenge = randint(-1 * sys.maxsize - 1, sys.maxsize)
                 xres = hashlib.sha1((clients[client_id]['LongTermKey'] +
                                      str(challenge)).encode()).hexdigest()
-                clients[client_id]['SessionKey'] = xres
+                clients[client_id]['AuthenticationKey'] = xres
 
                 if debug:
                     print('xres = %s' % xres)
@@ -326,14 +326,14 @@ def udp_connection():
 
             elif message.startswith('RESPONSE'):
                 client_id, res = Utility.get_substring_between_parentheses(message).split(',')
-                if clients[client_id]['SessionKey'] == res.strip():
+                if clients[client_id]['AuthenticationKey'] == res.strip():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
                     clients[client_id]['Cookie'] = str(cookie)
                     message = 'AUTH_SUCCESS(%d,%d)' % (cookie, tcp_port)
                 else:
                     message = 'AUTH_FAIL'
                     clients[client_id]['Online'] = False
-                    clients[client_id]['SessionKey'] = ''
+                    clients[client_id]['AuthenticationKey'] = ''
                     clients[client_id]['Cookie'] = ''
                     clients[client_id]['SessionID'] = ''
 
