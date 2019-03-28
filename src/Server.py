@@ -2,7 +2,7 @@ import socket
 import sys
 import hashlib
 from random import randint
-import util
+import Utility
 from threading import Thread
 
 udp_port = 9999
@@ -99,6 +99,7 @@ histories = []
 
 def handle_tcp_connection(tcp_client):
     required_ack = True
+    global global_session_count
 
     try:
         message = tcp_client.recv(4096)
@@ -107,14 +108,17 @@ def handle_tcp_connection(tcp_client):
         if debug:
             print('Receiving %s' % message)
 
-        data = util.get_substring_between_parentheses(message)
+        data = Utility.get_substring_between_parentheses(message)
 
         if message.startswith('CHAT_REQUEST'):
             from_client_id, to_client_id = data.split(',')
 
-            if clients[to_client_id]['Online']:
-                global global_session_count
+            if clients[to_client_id]['Online'] is True and \
+                    len(clients[to_client_id]['SessionID']) == 0:
                 global_session_count = global_session_count + 1
+
+                if debug:
+                    print('Current global_session_count = %d' % global_session_count)
 
                 clients[from_client_id]['SessionID'] = str(global_session_count)
                 clients[to_client_id]['SessionID'] = str(global_session_count)
@@ -131,6 +135,8 @@ def handle_tcp_connection(tcp_client):
                 # send to current client (from_client)
                 message = 'CHAT_START(%d,%s)' % (global_session_count, to_client_id)
             else:
+                if debug:
+                    print('Unreachable')
                 message = 'UNREACHABLE(%s)' % to_client_id
 
         elif message.startswith('END_REQUEST'):
@@ -153,11 +159,11 @@ def handle_tcp_connection(tcp_client):
 
         elif message.startswith('PING'):
             from_client_id = data
-            message = ''.join(str(e) for e in clients[from_client_id]['QueuedMessages'])
+            message = '<;>'.join(str(e) for e in clients[from_client_id]['QueuedMessages'])
             clients[from_client_id]['QueuedMessages'] = []
 
         elif message.startswith('LOG_OFF'):
-            client_id, cookie = util.get_substring_between_parentheses(message).split(',')
+            client_id, cookie = Utility.get_substring_between_parentheses(message).split(',')
             required_ack = False
 
             if clients[client_id]['Cookie'] == cookie:
@@ -192,16 +198,20 @@ def handle_tcp_connection(tcp_client):
             required_ack = False
 
         elif message.startswith('HISTORY_REQ'):
+            client_id = data.split(',')[0]
+            chat_with = data.split(',')[1]
+
             if debug:
                 print(histories)
-
-            client_id = data[0]
+                print('Requestor: %s - For: %s' % (client_id, chat_with))
 
             '''
             NOTE: this logic down here only works if both client send something
             in the session. If either of them does not send anything and just
             receiving, then this logic will miss that session
             '''
+
+            is_populated_first_history_record = False
 
             # find all distinct sessions of the current client
             sessions_of_current_client = []
@@ -210,13 +220,22 @@ def handle_tcp_connection(tcp_client):
                         history['SessionID'] not in sessions_of_current_client:
                     sessions_of_current_client.append(history['SessionID'])
 
+            if debug:
+                print(sessions_of_current_client)
+
             # find all messages in the previously found sessions
             for history in histories:
                 if history['SessionID'] in sessions_of_current_client:
-                    message = 'HISTORY_RESP(%s,%s,%s)' % (history['SessionID'], history['Sender'], history['Message'])
-                    tcp_client.send(message.endswith('utf-8'))
+                    temp_message = 'HISTORY_RESP(%s,%s,%s)' % \
+                                   (history['SessionID'], history['Sender'], history['Message'])
 
-            required_ack = False
+                    if is_populated_first_history_record:
+                        clients[client_id]['QueuedMessages'].append(temp_message)
+                    else:
+                        message = temp_message
+                        is_populated_first_history_record = True
+
+            required_ack = True
 
         else:
             print('Unknown command')
@@ -229,9 +248,6 @@ def handle_tcp_connection(tcp_client):
                 print('Sending %s' % message)
 
             tcp_client.send(message.encode('utf-8'))
-
-    # except socket.timeout:
-    #     print('Wait too long')
 
     finally:
         tcp_client.close()
@@ -296,7 +312,7 @@ def udp_connection():
                 print('Receiving %s' % message)
 
             if message.startswith('HELLO'):
-                client_id = util.get_substring_between_parentheses(message)
+                client_id = Utility.get_substring_between_parentheses(message)
                 clients[client_id]['Online'] = True
                 challenge = randint(-1 * sys.maxsize - 1, sys.maxsize)
                 xres = hashlib.sha1((clients[client_id]['LongTermKey'] +
@@ -309,7 +325,7 @@ def udp_connection():
                 message = 'CHALLENGE(%d)' % challenge
 
             elif message.startswith('RESPONSE'):
-                client_id, res = util.get_substring_between_parentheses(message).split(',')
+                client_id, res = Utility.get_substring_between_parentheses(message).split(',')
                 if clients[client_id]['SessionKey'] == res.strip():
                     cookie = randint(-1 * sys.maxsize - 1, sys.maxsize)
                     clients[client_id]['Cookie'] = str(cookie)

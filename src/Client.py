@@ -1,7 +1,7 @@
 import socket
 import sys
 import time
-import util
+import Utility
 import hashlib
 import msvcrt
 
@@ -13,7 +13,8 @@ tcp_port = 0
 debug = False
 client_id = 'Client-ID-%s' % sys.argv[1]
 keyboard_input = ''
-refresh_timeout = 5    # seconds
+# default_refresh_timeout_in_second = 5
+refresh_timeout = 5
 
 
 client_instances = {
@@ -148,13 +149,13 @@ def authenticate():
                 print('Receiving %s from %s' % (message, udp_addr))
 
             if message.startswith('CHALLENGE'):
-                rand = util.get_substring_between_parentheses(message)
+                rand = Utility.get_substring_between_parentheses(message)
                 response = hashlib.sha1(client_instances[client_id]['LongTermKey'].encode('utf-8') +
                                         rand.encode()).hexdigest()
                 message = 'RESPONSE(%s,%s)' % (client_id, response)
 
             elif message.startswith('AUTH_SUCCESS'):
-                cookie, port = util.get_substring_between_parentheses(message).split(',')
+                cookie, port = Utility.get_substring_between_parentheses(message).split(',')
                 global tcp_port
                 tcp_port = int(port)
                 client_instances[client_id]['Cookie'] = cookie
@@ -178,6 +179,8 @@ def authenticate():
 
 
 def chat():
+    global refresh_timeout
+
     print('connected now on chat session')
     end_session = False
 
@@ -201,41 +204,43 @@ def chat():
             if debug:
                 print('Server: %s' % message)
 
-            if message.startswith('CHAT_START'):
-                data = util.get_substring_between_parentheses(message)
-                client_instances[client_id]['SessionID'] = data.split(',')[0]
+            messages = message.split('<;>')
 
-                if debug:
-                    print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionID']))
+            for msg in messages:
+                if msg.startswith('CHAT_START'):
+                    data = Utility.get_substring_between_parentheses(msg)
+                    client_instances[client_id]['SessionID'] = data.split(',')[0]
 
-                print('Chat started' + ' ' * 10)
+                    if debug:
+                        print('%s SessionID = %s' % (client_id, client_instances[client_id]['SessionID']))
 
-            elif message.startswith('UNREACHABLE'):
-                print('Correspondent is unreachable')
+                    print('Chat started' + ' ' * 10)
 
-            elif message.startswith('END_NOTIF'):
-                client_instances[client_id]['SessionID'] = ''
-                client_instances[client_id]['SessionKey'] = ''
-                client_instances[client_id]['Cookie'] = ''
-                print('Chat ended' + ' ' * 10)
+                elif message.startswith('UNREACHABLE'):
+                    print('Correspondent is unreachable')
 
-            elif message.startswith('CHAT'):
-                data = util.get_substring_between_parentheses(message).split(',')
-                print('%s: %s' % (data[0], data[2]))
+                elif msg.startswith('END_NOTIF'):
+                    client_instances[client_id]['SessionID'] = ''
+                    client_instances[client_id]['SessionKey'] = ''
+                    client_instances[client_id]['Cookie'] = ''
+                    print('Chat ended' + ' ' * 10)
 
-            elif message.startswith('NO_DATA'):
-                if debug:
-                    print('No message from server')
-                else:
-                    print('\r', end='')
+                elif msg.startswith('CHAT'):
+                    data = Utility.get_substring_between_parentheses(msg).split(',')
+                    print('%s: %s' % (data[0], data[2]))
 
-            elif message.startswith('HISTORY_RESP'):
-                data = util.get_substring_between_parentheses(message).split(',')
-                session = data[0]
-                sender = data[1]
-                past_message = data[2]
-                print("%10s%20s%s") % (session, sender, past_message)
-                continue
+                elif msg.startswith('NO_DATA'):
+                    if debug:
+                        print('No message from server')
+                    else:
+                        print('\r', end='')
+
+                elif msg.startswith('HISTORY_RESP'):
+                    data = Utility.get_substring_between_parentheses(msg).split(',')
+                    session = data[0]
+                    sender = data[1]
+                    past_message = data[2]
+                    print('Session: {:10}Sender: {:20}Message: {}'.format(session, sender, past_message))
 
         except socket.timeout:
             if debug:
@@ -245,6 +250,9 @@ def chat():
         keyboard_listener()
         sys.stdout.flush()
         raw_input = keyboard_input
+
+        if refresh_timeout != 5 and raw_input != 'Ping':
+            refresh_timeout = 5
 
         if raw_input.startswith('Chat ') and raw_input != 'Chat end':
             chat_client = raw_input.split(' ')[1]
@@ -268,19 +276,17 @@ def chat():
         elif raw_input.startswith('History'):
             chat_client = raw_input.split(' ')[1]
             message = 'HISTORY_REQ(%s,%s)' % (client_id, chat_client)
+            refresh_timeout = 1
 
         elif raw_input == 'Ping':
             message = 'PING(%s)' % client_id
 
         else:
             if client_instances[client_id]['SessionID'] == '':
-                message = ''
+                message = 'PING(%s)' % client_id
                 print('Unknown command. Not connected to chat session yet.')
             else:
                 message = 'CHAT(%s,%s,%s)' % (client_id, client_instances[client_id]['SessionID'], raw_input)
-
-        if message == '':
-            continue
 
         if debug:
             print('Sending %s' % message)
