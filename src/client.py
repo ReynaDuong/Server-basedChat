@@ -106,26 +106,28 @@ def keyboard_listener():
             keyboard_input = default_keyboard_input_value
             return
 
-        if msvcrt.kbhit():
+        if utility.detect_keyboard_hit():
             break
 
     # print(client_id + ': ', end='')
-    while True:
-        c = msvcrt.getche()
-        ordinal = ord(c)
+    # while True:
+    #     c = utility.get_char_console()
+    #     ordinal = ord(c)
+    #
+    #     # enter
+    #     if ordinal == 13:
+    #         keyboard_input = keyboard_input.replace('\r', '')
+    #         print(client_id + ': ')
+    #         sys.stdout.flush()
+    #         return
+    #     elif ordinal == 8 or ordinal == 127:
+    #         keyboard_input = keyboard_input[:-1]
+    #     elif 32 <= ordinal <= 126:
+    #         keyboard_input += c.decode('utf-8')
+    #     else:
+    #         pass
 
-        # enter
-        if ordinal == 13:
-            keyboard_input = keyboard_input.replace('\r', '')
-            print(client_id + ': ')
-            sys.stdout.flush()
-            return
-        elif ordinal == 8 or ordinal == 127:
-            keyboard_input = keyboard_input[:-1]
-        elif 32 <= ordinal <= 126:
-            keyboard_input += c.decode('utf-8')
-        else:
-            pass
+    keyboard_input = input()
 
 
 def authenticate():
