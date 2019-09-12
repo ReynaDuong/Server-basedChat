@@ -7,3 +7,6 @@ This is a project for my Computer Network class, running on UNIX server using Py
 - If a client is offline, others cannot connect to it.
 
 Diagrams:
+![Chat phase](https://github.com/ReynaDuong/Server-basedChat/blob/master/doc/img/chatPhase.png)
+
+![Connection phase](https://github.com/ReynaDuong/Server-basedChat/blob/master/doc/img/connectionPhase.png)
